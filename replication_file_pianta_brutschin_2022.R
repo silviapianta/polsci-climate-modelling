@@ -50,6 +50,19 @@ colours3=c("high"="royalblue", "low"="orange")
 # We provide below the links that allow to download them.
 
 
+#################################
+
+# Population data
+
+population_data <- WDI(country = "all",
+                       indicator = c(
+                         'population'='SP.POP.TOTL'),
+                       start = 2010,end = 2020,extra = TRUE) %>%
+  as_tibble() %>%
+  filter(region!="Aggregates") %>%
+  select(iso3c, year, population) %>%
+  arrange(iso3c, year)
+
 
 #################################
 
@@ -188,21 +201,6 @@ country_plot
 ggsave("Figure2.png", units="in", width=7, height=9, dpi=300)
 
 
-#################################
-
-# Population data
-
-population_data <- WDI(country = "all",
-            indicator = c(
-              'population'='SP.POP.TOTL'),
-            start = 2010,end = 2020,extra = TRUE) %>%
-  filter(year==2020) %>%
-  as_tibble() %>%
-  filter(region!="Aggregates") %>%
-  select(iso3c, year, population) %>%
-  arrange(iso3c, year)
-  
-
 
 
 #################################
@@ -327,7 +325,7 @@ science <- import("gii.csv") %>%
   rename(iso3c = "Country ISO3") %>%
   select(-c(`Indicator Id`, `Indicator`, `Subindicator Type`, "Country Name")) %>%
   pivot_longer(!c(iso3c), names_to = "year", values_to = "science_percent") %>%
-  filter(year==2019) %>%
+  filter(year!=2020) %>%
   mutate(year=as.numeric(year)) 
 
 
@@ -353,6 +351,7 @@ technology<-WDI(country = "all",
   filter(iso3c!="BTN") %>%
   filter(iso3c!="PHL") %>%
   filter(iso3c!="BRN")%>%
+  filter(iso3c!= "DJI") %>%
   filter(year==2019) %>%
   mutate(science_percent=ifelse(iso3c=="CHN", 40, science_percent))
 
