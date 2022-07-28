@@ -123,7 +123,6 @@ fossil_sector_fig
 # Download data on the share of methane emissions in agriculture
 # From this link https://zenodo.org/record/5053056#.YuJdaOxBygR
 # Source: Jan C. Minx, William F. Lamb, Robbie M. Andrew, Josep G. Canadell, Monica Crippa, Niklas Döbbeling, Piers Forster, Diego Guizzardi, Jos Olivier, Julia Pongratz, Andy Reisinger, Matthew Rigby, Glen Peters, Marielle Saunois, Steven J. Smith, Efisio Solazzo, & Hanqin Tian. (2021). A comprehensive dataset for global, regional and national greenhouse gas emissions by sector 1970-2019 [Data set]. Zenodo. https://doi.org/10.5281/zenodo.5053056
-# 
 
 
 methane <-import("essd_ghg_data.xlsx", which = "data") %>%
@@ -139,18 +138,15 @@ methane <-import("essd_ghg_data.xlsx", which = "data") %>%
 # Download data on population and the share agriculture in GDP 
 # Directly downloaded by code below from the World Bank World Development Indicators (WDI)
 
-wdi1 <- WDI(country = "all",
+agri_sector <- WDI(country = "all",
                  indicator = c(
                    'population'='SP.POP.TOTL',
                    'share_agriculture'='NV.AGR.TOTL.ZS'),
-                 start = 1960,end = 2020,extra = TRUE) %>%
+                 start = 2020,end = 2020,extra = TRUE) %>%
   as_tibble() %>%
   filter(region!="Aggregates") %>%
   arrange(iso3c, year) %>%
-  fill(share_agriculture,.direction = "down")
-
-agri_sector <- wdi1 %>%
-             filter(year==2020) %>%
+  fill(share_agriculture,.direction = "down")  %>%
              left_join(methane, by=c("iso3c")) %>%
              left_join(regions, by=c("iso3c")) %>%
              filter(country!="Somalia") %>%
@@ -164,6 +160,9 @@ agri_sector <- wdi1 %>%
 
 meth_cap_q <- quantile(agri_sector$methane_cap_norm, probs = c(0.7), na.rm = T)
 agri_gdp_norm_q <- quantile(agri_sector$agri_gdp_norm, probs = c(0.7), na.rm = T)
+
+
+# Figure
 
 
 agri_sector_fig <- agri_sector %>%
@@ -207,8 +206,6 @@ population_data <- WDI(country = "all",
   select(iso3c, year, population) %>%
   arrange(iso3c, year)
   
-# population_data<-agri_sector %>%
-#   select(iso3c, year, population)
 
 
 
@@ -277,28 +274,28 @@ ggsave("Figure3.png", units="in", width=7, height=4, dpi=300)
 # Figure 4 - Economic Capacity
 
 
-gdppc<-WDI(country = "all",
+econ<-WDI(country = "all",
            indicator = c(
              'gdp_capita'="NY.GDP.PCAP.PP.KD", 
              'ease_business'="IC.BUS.DFRN.XQ"),
-           start = 1960,end = 2020,extra = TRUE) %>%
+           start = 2019,end = 2019,extra = TRUE) %>% 
   as_tibble() %>%
   filter(region!="Aggregates") %>%
   arrange(iso3c, year) %>%
-  filter(year==2020) %>%
   left_join(population_data, by=c("iso3c")) %>%
   # filter(population>10*10^6) %>%
+  filter(iso3c!="MAC") %>%
   mutate(gdp_log=log(gdp_capita+1)) %>%
   fill(ease_business,.direction = "down") %>%
   mutate(gdp_score=range01(gdp_capita)*100) 
 
 
-gdp_capita70 <- quantile(gdppc$gdp_capita, probs = c(0.7), na.rm = T)
-ease_business70 <- quantile(gdppc$ease_business, probs = c(0.7), na.rm = T)
+gdp_capita70 <- quantile(econ$gdp_capita, probs = c(0.7), na.rm = T)
+ease_business70 <- quantile(econ$ease_business, probs = c(0.7), na.rm = T)
 
 
 
-economic_fig<-gdppc %>%
+economic_fig<-econ %>%
   left_join(regions, by=c("iso3c")) %>%
   filter(!is.na(regions)) %>%
   mutate(country_viz=ifelse(gdp_capita>gdp_capita70|ease_business>ease_business70, iso3c,NA)) %>%
@@ -317,29 +314,32 @@ ggsave("Figure4.png", units="in", width=7, height=4, dpi=300)
 
 
 
-########################################################################################
-#Figure 5 - Technology 
+#################################
 
-population_data<-agri_sector %>%
-                 select(iso3c, year, population)
+#Figure 5 - Technological Capacity
+
 
 wdi3<-WDI(country = "all",
           indicator = c(
             'rd_gdp'='GB.XPD.RSDV.GD.ZS', 'population'='SP.POP.TOTL'),
-          start = 1960,end = 2020,extra = TRUE) %>%
+          start = 2019,end = 2019,extra = TRUE) %>%
   as_tibble() %>%
   filter(region!="Aggregates") %>%
   arrange(iso3c, year) %>%
   fill(rd_gdp,.direction = "down") 
 
 
-science<-vroom("gii.csv") %>%
-  #Graduates in science and engineering, % of total tertiary graduates
-  #Please download this data yourself
+# Download data on Graduates in science and engineering, % of total tertiary graduates from this link
+# https://tcdata360.worldbank.org/indicators/3aa2eb70?country=BRA&indicator=40712&viz=line_chart&years=2013,2020
+# Click on "Download Source Data" on the top right corner
+# Save file as gii.csv
+
+science<-import("gii.csv") %>%
   filter(Indicator=="Graduates in science and engineering", `Subindicator Type`=="Percent") %>%
-  select(-c(`Indicator Id`, `Indicator`, `Subindicator Type`, country)) %>%
+  rename(iso3c = "Country ISO3") %>%
+  select(-c(`Indicator Id`, `Indicator`, `Subindicator Type`, "Country Name")) %>%
   pivot_longer(!c(iso3c), names_to = "year", values_to = "science_percent") %>%
-  filter(year!=2020) %>%
+  filter(year==2019) %>%
   mutate(year=as.numeric(year)) 
 
 technology<-wdi3 %>%
@@ -364,9 +364,11 @@ rd_gdp70<-quantile(technology$rd_gdp, probs = c(0.7), na.rm = T)
 science_percent70<-quantile(technology$science_percent, probs = c(0.7), na.rm = T)
 
 
+# Figure
+
 technology_fig<-technology %>%
   filter(!(is.na(regions)))  %>%
-  filter(iso3c!="DJI")%>%
+  #filter(iso3c!="DJI")%>%
   mutate(region=factor(region, levels=c("REF","MAF", "LAM","ASIA", "OECD")))%>%
   mutate(country_viz=ifelse(rd_gdp>rd_gdp70|science_percent>science_percent70, iso3c,NA)) %>%
   ggplot() +
@@ -382,8 +384,39 @@ technology_fig
 ggsave("Figure5.png", units="in", width=12, height=5, dpi=300)
 
 
-##################################################
-#Figure 6 - Public Support - Please download the data yourself, see sources and variable names in SM
+#################################
+
+#Figure 6 - Public Support 
+
+# Download & clean data from European Values Survey and World Values Survey 
+# Following the procedure below
+# This is to comply with the WVS & WVS conditions of use
+
+# 
+
+
+# 1.  Download & clean EVS Trend File
+# 
+# 1.1	Download EVS Trend File 1981-2017  https://search.gesis.org/research_data/ZA7503
+#     Saved as "EVS_Trend_File_1981-2017_ZA7503_v2-0-0.dta"
+#
+# 1.2	Use "EVS_Trend_File_1981-2017_ZA7503_missing.do" to clean missing values by replacing negative values with .a , .b, .c, .d. 
+#     This .do file saves the new dataset as "EVS_Trend_File_1981-2017_ZA7503_v2-0-0_miss.dta"
+#
+#
+# 2.  Download WVS Trend File, clean and  merge with EVS Trend File to create IVS file
+# 
+# 2.1	Download WVS Time-Series (1981-2020) Cross-National Data-Set (2.0.0) https://www.worldvaluessurvey.org/WVSEVStrend.jsp
+#     Saved as "WVS_Trend_v2_0.dta"
+#
+# 2.2	Use "ZA7503_EVS_WVS_Merge_Syntax.do" to clean WVS trend and merge with EVS trend
+#     This .do file saves the IVS dataset as "Integrated_values_surveys_1981-2021.dta"
+#
+#
+# 3   Clean IVS file to keep only relevant variables (env + postmat) for last wave
+#
+# 3.1  Run IVS_clean.do
+#      File saved as "IVS7_env.dta"
 
 ivs7 <-read_dta("IVS7_env.dta") %>%
   mutate(iso3c = countrycode(iso2c, 'iso2c', 'iso3c')) %>%
@@ -393,7 +426,6 @@ ivs7 <-read_dta("IVS7_env.dta") %>%
   filter(!(is.na(regions))) %>%
   mutate(postmat_norm=range01(postmat)*100) %>%
   mutate(envgrowth_norm=range01(envgrowth)*100) %>%
-  mutate(engo_norm=range01(engo)*100) %>%
   mutate(attitudes_index=(postmat_norm+envgrowth_norm)/2) 
 
 
@@ -404,7 +436,7 @@ envgrowth70<-quantile(ivs7$envgrowth, probs = c(0.7), na.rm = T)
 
 
 #attitudes figure
-attitudes_fig<-ivs7 %>%
+attitudes_fig <- ivs7 %>%
   mutate(country_viz=ifelse(postmat>postmat70|envgrowth>envgrowth70, iso3c,NA)) %>%
   ggplot() +
   geom_point(aes(y=envgrowth, x=postmat, color=regions), size=4, alpha=0.6)+
@@ -418,11 +450,12 @@ attitudes_fig
 
 ggsave("Figure6.png", units="in", width=7, height=4, dpi=300)
 
-################################################################
-#Calculations for Figure 7 - It was prepared in Power Point
+###################
+
+#Calculations for Figure 7 - Which was then prepared in Power Point
 
 
-agri_index_data<-agri_sector %>%
+agri_index_data <- agri_sector %>%
   mutate(agri_index=(agri_gdp_norm+methane_cap_norm)/2) 
 
 fossil_index_data<-fossil_sector %>%
@@ -435,12 +468,11 @@ technology_index_data<- technology%>%
   mutate(rd_gdp_norm=100*range01(rd_gdp)) %>%
   mutate(tech_index=(science_norm+rd_gdp_norm)/2)
 
-economic_index_data<- gdppc%>%
+economic_index_data<- econ%>%
   left_join(regions, by=c("iso3c")) %>%
   filter(!is.na(regions)) %>%
   ungroup() %>%
   mutate(econ_index=(gdp_score+ease_business)/2)
-
 
 
 agri<-agri_index_data %>%
@@ -458,7 +490,7 @@ tech<-technology_index_data %>%
   ungroup() %>%
   select(iso3c,tech_index)
 
-instit<-gov_eff %>%
+instit<-wgi %>%
   ungroup() %>%
   select(iso3c,instit_index)
 
@@ -530,6 +562,7 @@ regional_evaluation<-fossil_region %>%
   left_join(attitudes_region) 
 
 write.csv(regional_evaluation, "regional_evaluation.csv")
+
 
 #Check the country level median
 
