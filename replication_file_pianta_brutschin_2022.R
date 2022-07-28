@@ -19,7 +19,7 @@
 
 # In case you do not have some of these packages, please install them
 
-pkgs <- c("vroom", "tidyverse", "here", "zoo", "haven", "countrycode", "ggrepel", "WDI", "hrbrthemes", "cowplot", "scatterplot3d")
+pkgs <- c("vroom", "rio","tidyverse", "here", "zoo", "haven", "countrycode", "ggrepel", "WDI", "hrbrthemes", "cowplot", "scatterplot3d")
 load<-lapply(pkgs, library, character.only=TRUE)
 
 
@@ -46,18 +46,20 @@ colours=c("ASIA"="firebrick", "OECD"="forestgreen", "LAM" ="royalblue", "MAF"="g
 colours3=c("high"="royalblue", "low"="orange")
 
 
-# Note: the code downloads most data directly from online sources, 
-# as we might not be allowed to distribute them
+# Note: as we might not be allowed to distribute them,
+# some datasets will need to be downloaded directly from online sources.
+# We provide below the links that allow to download them.
+
 
 
 #################################
 
-#Figure 2 data and visualizations
+#Figure 2 - Emissions lock-in
 
-#Figure 2A
+#Figure 2A - Carbon lock-in
 
-# Download data on fossil share of electricity generation and fossil rent 
-# Source: World Bank World Development Indicators (WDI)
+# Data on fossil share of electricity generation and fossil rent 
+# Directly downloaded by code below from the World Bank World Development Indicators (WDI)
 
 
 wdi2 <- WDI(country = "all",
@@ -80,6 +82,9 @@ wdi2 <- WDI(country = "all",
   fill(coal_share,.direction = "down") %>%
   fill(gas_share,.direction = "down") %>%
   fill(oil_share,.direction = "down") 
+
+
+# Data from last available year: 2020
 
 fossil_sector <- wdi2 %>%
   filter(year==2020) %>%
@@ -113,24 +118,26 @@ fossil_sector_fig <- fossil_sector %>%
 fossil_sector_fig
 
 
-# Figure 2B
+# Figure 2B - Methane lock-in
 
-# Dowload data on the share of methane emissions in agriculture
-# Source: https://zenodo.org/record/5497833 
+# Download data on the share of methane emissions in agriculture
+# From this link https://zenodo.org/record/5053056#.YuJdaOxBygR
+# Source: Jan C. Minx, William F. Lamb, Robbie M. Andrew, Josep G. Canadell, Monica Crippa, Niklas Döbbeling, Piers Forster, Diego Guizzardi, Jos Olivier, Julia Pongratz, Andy Reisinger, Matthew Rigby, Glen Peters, Marielle Saunois, Steven J. Smith, Efisio Solazzo, & Hanqin Tian. (2021). A comprehensive dataset for global, regional and national greenhouse gas emissions by sector 1970-2019 [Data set]. Zenodo. https://doi.org/10.5281/zenodo.5053056
+# 
 
 
-methane <-vroom("emissions.csv") %>%
+methane <-import("essd_ghg_data.xlsx", which = "data") %>%
            filter(year==2019) %>%
   filter(sector_title=="AFOLU") %>%
   filter(gas=="CH4") %>%
   group_by(ISO) %>%
-  mutate(value=value*gwp100_ar6) %>%
+  mutate(value=value*gwp100_ar5) %>%
   summarise(methane_emissions=sum(value)) %>%
   rename(iso3c=ISO)
 
 
-# Dowload data on population and the share agriculture in GDP 
-# Source: World Bank World Development Indicators (WDI)
+# Download data on population and the share agriculture in GDP 
+# Directly downloaded by code below from the World Bank World Development Indicators (WDI)
 
 wdi1 <- WDI(country = "all",
                  indicator = c(
@@ -154,6 +161,7 @@ agri_sector <- wdi1 %>%
 
 
 #Calculations not to add labels only to higher percentile countries
+
 meth_cap_q <- quantile(agri_sector$methane_cap_norm, probs = c(0.7), na.rm = T)
 agri_gdp_norm_q <- quantile(agri_sector$agri_gdp_norm, probs = c(0.7), na.rm = T)
 
@@ -185,26 +193,41 @@ country_plot
 ggsave("Figure2.png", units="in", width=7, height=9, dpi=300)
 
 
-########################################################################################
-#Figure 3 - Governance 
+#################################
 
-#Please download the data yourself and save it in the data folder (see source in the SM)
+# Population data
 
-gov_rl<-vroom("governance_2021.csv") %>%
-  select(countryname, year,rle) %>%
-  arrange(countryname, year) %>%
+population_data<-agri_sector %>%
+  select(iso3c, year, population)
+
+
+
+#################################
+
+#Figure 3 - Governance capacity
+
+# Download data on governance capacity from World Bank Worldwide Governance indicators (WGI)
+# https://databank.worldbank.org/source/worldwide-governance-indicators
+
+# 1. Select Country: All countries
+# 2. Select Series: Government Effectiveness (Estimate) and Rule of Law (Estimate) variables
+# 3. Select Time: Latest available year: 2020
+
+
+
+wgi<-import("governance_indicators.csv") %>%
+  rename(countryname = "Country Name") %>%
+  rename(var = "Series Code") %>%
+  rename(value = "2020 [YR2020]") %>%
+  mutate(var = replace(var, var=="GE.EST", "gee")) %>%
+  mutate(var = replace(var, var=="RL.EST", "rle")) %>%
+  select(countryname, var, value) %>%
   mutate(iso3c=countrycode(countryname, "country.name", "iso3c")) %>%
-  select(-countryname)
-
-
-
-gov_eff<-vroom("governance_2021.csv") %>%
-  select(countryname, year, gee) %>%
-  mutate(iso3c=countrycode(countryname, "country.name", "iso3c")) %>%
+  select(-countryname) %>%
+  add_column(year=2020) %>%
   left_join(population_data, by=c("iso3c", "year")) %>%
   left_join(regions, by=c("iso3c")) %>%
   filter(!(is.na(regions))) %>%
-  left_join(gov_rl, by=c("year", "iso3c")) %>%
   group_by(year) %>%
   mutate(ge_norm=range01(gee)*100) %>%
   mutate(rl_norm=range01(rle)*100) %>%
@@ -498,7 +521,7 @@ regional_evaluation<-fossil_region %>%
 
 write.csv(regional_evaluation, "regional_evaluation.csv")
 
-#Check the country level 50% median
+#Check the country level median
 
 agri_50<-quantile(agri_index_data$agri_index, probs = c(0.5), na.rm = T)
 fossil_50<-quantile(fossil_index_data$fossil_index, probs = c(0.5), na.rm = T)
