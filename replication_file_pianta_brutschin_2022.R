@@ -9,8 +9,7 @@
 
 
 
-# Please note that, as the code downloads the most recent population data 
-# and some of the datasets from online sources, 
+# Please note that, as the code downloads some of the datasets from online sources, 
 # the reported numbers for regional aggregation might change
 
 
@@ -58,11 +57,11 @@ colours3=c("high"="royalblue", "low"="orange")
 
 #Figure 2A - Carbon lock-in
 
-# Data on fossil share of electricity generation and fossil rent 
+# Data on fossil share of electricity generation and fossil rent from last available year (2020)
 # Directly downloaded by code below from the World Bank World Development Indicators (WDI)
 
 
-wdi2 <- WDI(country = "all",
+fossil_sector <- WDI(country = "all",
           indicator = c(
             'coal_rent'='NY.GDP.COAL.RT.ZS', 
             'co2_cap'='EN.ATM.CO2E.PC', 'population'='SP.POP.TOTL',
@@ -81,22 +80,19 @@ wdi2 <- WDI(country = "all",
   fill(oil_rent,.direction = "down") %>%
   fill(coal_share,.direction = "down") %>%
   fill(gas_share,.direction = "down") %>%
-  fill(oil_share,.direction = "down") 
-
-
-# Data from last available year: 2020
-
-fossil_sector <- wdi2 %>%
+  fill(oil_share,.direction = "down")  %>%
   filter(year==2020) %>%
   select(iso3c,country,coal_rent, gas_rent, oil_rent, co2_cap, population, coal_share, gas_share, oil_share) %>%
   left_join(regions, by=c("iso3c")) %>%
   #filter(population>10*10^6) %>%
   mutate(fossil_rent=coal_rent+oil_rent+gas_rent) %>%
   mutate(fossil_share=coal_share+gas_share+oil_share) %>%
-  filter(fossil_share<90) %>%
+  filter(fossil_share>90) %>%
   mutate(fossil_rent_norm=100*range01(fossil_rent)) %>%
   mutate(co2_cap_norm=100*range01(co2_cap)) %>%
   mutate(fossil_share_norm=100*range01(fossil_share)) 
+
+
 
 fossil_rent_norm_q <- quantile(fossil_sector$fossil_rent_norm, probs = c(0.7), na.rm = T)
 fossil_share_norm_q <- quantile(fossil_sector$fossil_share_norm, probs = c(0.7), na.rm = T)
