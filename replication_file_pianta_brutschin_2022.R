@@ -25,10 +25,10 @@ load<-lapply(pkgs, library, character.only=TRUE)
 
 # Set working directory to the folder with key datasets (see folder data)
 
-setwd("/Users/silviapianta/Dropbox (CMCC)/politics_and_governance/data figures Elina/data")
+setwd("/Users/silviapianta/Documents/GitHub/polsci-climate-modelling")
 
 
-# You will need to download some data directly, as we might not be allowed to distribute them
+# You will need to download most data directly, as we might not be allowed to distribute them
 
 # Function to standardize measurements (will be used later)
 
