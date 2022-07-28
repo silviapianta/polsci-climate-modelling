@@ -52,7 +52,8 @@ colours3=c("high"="royalblue", "low"="orange")
 
 #Figure 2A
 
-# Obtain data on fossil share of electricity generation and fossil rent from the World Bank
+# Download data on fossil share of electricity generation and fossil rent 
+# from the World Bank
 
 
 wdi2<-WDI(country = "all",
@@ -108,8 +109,7 @@ fossil_sector_fig<-fossil_sector %>%
 fossil_sector_fig
 
 
-      ######################
-      #Figure 2B
+# Figure 2B
 
 #Getting the share of methane emissions in agriculture
 #source: https://zenodo.org/record/5497833 
