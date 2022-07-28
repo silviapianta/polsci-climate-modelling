@@ -57,7 +57,7 @@ colours3=c("high"="royalblue", "low"="orange")
 
 #Figure 2A - Carbon lock-in
 
-# Data on fossil share of electricity generation and fossil rent from last available year (2020)
+# Data on fossil share of electricity generation and fossil rent from last pre-pandemic year (2019)
 # Directly downloaded by code below from the World Bank World Development Indicators (WDI)
 
 
@@ -138,7 +138,7 @@ agri_sector <- WDI(country = "all",
                  indicator = c(
                    'population'='SP.POP.TOTL',
                    'share_agriculture'='NV.AGR.TOTL.ZS'),
-                 start = 2020,end = 2020,extra = TRUE) %>%
+                 start = 2010,end = 2020,extra = TRUE) %>%
   as_tibble() %>%
   filter(region!="Aggregates") %>%
   arrange(iso3c, year) %>%
@@ -195,7 +195,7 @@ ggsave("Figure2.png", units="in", width=7, height=9, dpi=300)
 population_data <- WDI(country = "all",
             indicator = c(
               'population'='SP.POP.TOTL'),
-            start = 1960,end = 2020,extra = TRUE) %>%
+            start = 2010,end = 2020,extra = TRUE) %>%
   filter(year==2020) %>%
   as_tibble() %>%
   filter(region!="Aggregates") %>%
@@ -274,15 +274,17 @@ econ<-WDI(country = "all",
            indicator = c(
              'gdp_capita'="NY.GDP.PCAP.PP.KD", 
              'ease_business'="IC.BUS.DFRN.XQ"),
-           start = 2019,end = 2019,extra = TRUE) %>% 
+           start = 2010,end = 2019,extra = TRUE) %>% 
   as_tibble() %>%
   filter(region!="Aggregates") %>%
   arrange(iso3c, year) %>%
-  left_join(population_data, by=c("iso3c")) %>%
+  left_join(population_data, by=c("iso3c", "year")) %>%
   # filter(population>10*10^6) %>%
-  filter(iso3c!="MAC") %>%
+  filter(iso3c!="MAC") %>% # filter out small countries that are relatively outliers
+  filter(iso3c!="TCA") %>%
   mutate(gdp_log=log(gdp_capita+1)) %>%
   fill(ease_business,.direction = "down") %>%
+  filter(year==2019) %>%
   mutate(gdp_score=range01(gdp_capita)*100) 
 
 
@@ -315,22 +317,12 @@ ggsave("Figure4.png", units="in", width=7, height=4, dpi=300)
 #Figure 5 - Technological Capacity
 
 
-wdi3<-WDI(country = "all",
-          indicator = c(
-            'rd_gdp'='GB.XPD.RSDV.GD.ZS', 'population'='SP.POP.TOTL'),
-          start = 2019,end = 2019,extra = TRUE) %>%
-  as_tibble() %>%
-  filter(region!="Aggregates") %>%
-  arrange(iso3c, year) %>%
-  fill(rd_gdp,.direction = "down") 
-
-
 # Download data on Graduates in science and engineering, % of total tertiary graduates from this link
 # https://tcdata360.worldbank.org/indicators/3aa2eb70?country=BRA&indicator=40712&viz=line_chart&years=2013,2020
 # Click on "Download Source Data" on the top right corner
 # Save file as gii.csv
 
-science<-import("gii.csv") %>%
+science <- import("gii.csv") %>%
   filter(Indicator=="Graduates in science and engineering", `Subindicator Type`=="Percent") %>%
   rename(iso3c = "Country ISO3") %>%
   select(-c(`Indicator Id`, `Indicator`, `Subindicator Type`, "Country Name")) %>%
@@ -338,13 +330,25 @@ science<-import("gii.csv") %>%
   filter(year==2019) %>%
   mutate(year=as.numeric(year)) 
 
-technology<-wdi3 %>%
+
+# Data on R&D investment as a percentage of GDP
+# Directly downloaded by code below from the World Bank World Development Indicators (WDI)
+
+
+technology<-WDI(country = "all",
+          indicator = c(
+            'rd_gdp'='GB.XPD.RSDV.GD.ZS', 'population'='SP.POP.TOTL'),
+          start = 2010,end = 2019,extra = TRUE) %>%
+  as_tibble() %>%
+  filter(region!="Aggregates") %>%
+  arrange(iso3c, year) %>%
+  fill(rd_gdp,.direction = "down")  %>%
   left_join(science, by=c("year", "iso3c")) %>%
   left_join(regions, by=c("iso3c")) %>%
   group_by(iso3c) %>%
   arrange(iso3c, year) %>%
   fill(science_percent,.direction = "down") %>%
-  filter(iso3c!="MMR") %>% # filter out countries with seemingly unreliable values
+  filter(iso3c!="MMR") %>% # filter out small countries with seemingly unreliable values
   filter(iso3c!= "SYC") %>%
   filter(iso3c!="BTN") %>%
   filter(iso3c!="PHL") %>%
