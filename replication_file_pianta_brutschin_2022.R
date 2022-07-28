@@ -338,7 +338,7 @@ science <- import("gii.csv") %>%
 technology<-WDI(country = "all",
           indicator = c(
             'rd_gdp'='GB.XPD.RSDV.GD.ZS', 'population'='SP.POP.TOTL'),
-          start = 2010,end = 2019,extra = TRUE) %>%
+          start = 2000,end = 2019,extra = TRUE) %>%
   as_tibble() %>%
   filter(region!="Aggregates") %>%
   arrange(iso3c, year) %>%
