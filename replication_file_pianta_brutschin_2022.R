@@ -197,8 +197,18 @@ ggsave("Figure2.png", units="in", width=7, height=9, dpi=300)
 
 # Population data
 
-population_data<-agri_sector %>%
-  select(iso3c, year, population)
+population_data <- WDI(country = "all",
+            indicator = c(
+              'population'='SP.POP.TOTL'),
+            start = 1960,end = 2020,extra = TRUE) %>%
+  filter(year==2020) %>%
+  as_tibble() %>%
+  filter(region!="Aggregates") %>%
+  select(iso3c, year, population) %>%
+  arrange(iso3c, year)
+  
+# population_data<-agri_sector %>%
+#   select(iso3c, year, population)
 
 
 
@@ -217,13 +227,16 @@ population_data<-agri_sector %>%
 
 wgi<-import("governance_indicators.csv") %>%
   rename(countryname = "Country Name") %>%
-  rename(var = "Series Code") %>%
+  rename(varname = "Series Code") %>%
   rename(value = "2020 [YR2020]") %>%
-  mutate(var = replace(var, var=="GE.EST", "gee")) %>%
-  mutate(var = replace(var, var=="RL.EST", "rle")) %>%
-  select(countryname, var, value) %>%
+  mutate_at(vars(value), as.numeric) %>% # warning due to empty rows - deleted below
+  select(countryname, varname, value) %>%
   mutate(iso3c=countrycode(countryname, "country.name", "iso3c")) %>%
   select(-countryname) %>%
+  filter(is.na(iso3c)==F) %>%
+  mutate(varname = replace(varname, varname=="GE.EST", "gee")) %>%
+  mutate(varname = replace(varname, varname=="RL.EST", "rle")) %>%
+  pivot_wider(names_from = varname, values_from = value) %>%
   add_column(year=2020) %>%
   left_join(population_data, by=c("iso3c", "year")) %>%
   left_join(regions, by=c("iso3c")) %>%
@@ -231,19 +244,18 @@ wgi<-import("governance_indicators.csv") %>%
   group_by(year) %>%
   mutate(ge_norm=range01(gee)*100) %>%
   mutate(rl_norm=range01(rle)*100) %>%
-  arrange(countryname, year) %>%
-  filter(year==2020) %>%
   mutate(instit_index=(ge_norm+rl_norm)/2) 
 
 
-ge_norm50<-quantile(gov_eff$ge_norm, probs = c(0.5), na.rm = T)
-rl_norm50<-quantile(gov_eff$rl_norm, probs = c(0.5), na.rm = T)
-instit_index50<-quantile(gov_eff$instit_index, probs = c(0.5), na.rm = T)
+ge_norm50 <- quantile(wgi$ge_norm, probs = c(0.5), na.rm = T)
+rl_norm50 <- quantile(wgi$rl_norm, probs = c(0.5), na.rm = T)
+instit_index50 <- quantile(wgi$instit_index, probs = c(0.5), na.rm = T)
 
 
-#institutional figure
-institutional_fig<-gov_eff %>%
-  filter(iso3c!="KOR") %>%
+# Figure
+
+institutional_fig<-wgi %>%
+  #filter(iso3c!="KOR") %>%
   mutate(country_viz=ifelse(ge_norm>ge_norm50|rl_norm>rl_norm50, iso3c,NA)) %>%
   ggplot() +
   geom_point(aes(y=ge_norm, x=rl_norm, color=regions), size=4, alpha=0.6)+
@@ -260,11 +272,9 @@ ggsave("Figure3.png", units="in", width=7, height=4, dpi=300)
 
 
 
-#######################################
-# Figure 4 - Economic capabilities 
+#################################
 
-population_data<-population_data %>%
-  select(-year)
+# Figure 4 - Economic Capacity
 
 
 gdppc<-WDI(country = "all",
@@ -272,19 +282,19 @@ gdppc<-WDI(country = "all",
              'gdp_capita'="NY.GDP.PCAP.PP.KD", 
              'ease_business'="IC.BUS.DFRN.XQ"),
            start = 1960,end = 2020,extra = TRUE) %>%
-  as_tibble()%>%
+  as_tibble() %>%
   filter(region!="Aggregates") %>%
   arrange(iso3c, year) %>%
+  filter(year==2020) %>%
   left_join(population_data, by=c("iso3c")) %>%
   # filter(population>10*10^6) %>%
   mutate(gdp_log=log(gdp_capita+1)) %>%
   fill(ease_business,.direction = "down") %>%
-  filter(year==2020) %>%
   mutate(gdp_score=range01(gdp_capita)*100) 
 
 
-gdp_capita70<-quantile(gdppc$gdp_capita, probs = c(0.7), na.rm = T)
-ease_business70<-quantile(gdppc$ease_business, probs = c(0.7), na.rm = T)
+gdp_capita70 <- quantile(gdppc$gdp_capita, probs = c(0.7), na.rm = T)
+ease_business70 <- quantile(gdppc$ease_business, probs = c(0.7), na.rm = T)
 
 
 
