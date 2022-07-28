@@ -212,14 +212,14 @@ ggsave("Figure2.png", units="in", width=7, height=9, dpi=300)
 
 # 1. Select Country: All countries
 # 2. Select Series: Government Effectiveness (Estimate) and Rule of Law (Estimate) variables
-# 3. Select Time: Latest available year: 2020
+# 3. Select Time: 2019
 
 
 
-wgi<-import("governance_indicators.csv") %>%
+wgi<-import("wgi.csv") %>%
   rename(countryname = "Country Name") %>%
   rename(varname = "Series Code") %>%
-  rename(value = "2020 [YR2020]") %>%
+  rename(value = "2019 [YR2019]") %>%
   mutate_at(vars(value), as.numeric) %>% # warning due to empty rows - deleted below
   select(countryname, varname, value) %>%
   mutate(iso3c=countrycode(countryname, "country.name", "iso3c")) %>%
@@ -228,7 +228,7 @@ wgi<-import("governance_indicators.csv") %>%
   mutate(varname = replace(varname, varname=="GE.EST", "gee")) %>%
   mutate(varname = replace(varname, varname=="RL.EST", "rle")) %>%
   pivot_wider(names_from = varname, values_from = value) %>%
-  add_column(year=2020) %>%
+  add_column(year=2019) %>%
   left_join(population_data, by=c("iso3c", "year")) %>%
   left_join(regions, by=c("iso3c")) %>%
   filter(!(is.na(regions))) %>%
@@ -238,15 +238,14 @@ wgi<-import("governance_indicators.csv") %>%
   mutate(instit_index=(ge_norm+rl_norm)/2) 
 
 
-ge_norm50 <- quantile(wgi$ge_norm, probs = c(0.5), na.rm = T)
-rl_norm50 <- quantile(wgi$rl_norm, probs = c(0.5), na.rm = T)
+ge_norm50 <- quantile(wgi$ge_norm, probs = c(0.7), na.rm = T)
+rl_norm50 <- quantile(wgi$rl_norm, probs = c(0.7), na.rm = T)
 instit_index50 <- quantile(wgi$instit_index, probs = c(0.5), na.rm = T)
 
 
 # Figure
 
 institutional_fig<-wgi %>%
-  #filter(iso3c!="KOR") %>%
   mutate(country_viz=ifelse(ge_norm>ge_norm50|rl_norm>rl_norm50, iso3c,NA)) %>%
   ggplot() +
   geom_point(aes(y=ge_norm, x=rl_norm, color=regions), size=4, alpha=0.6)+
@@ -560,7 +559,7 @@ regional_evaluation<-fossil_region %>%
   left_join(tech_region) %>%
   left_join(attitudes_region) 
 
-write.csv(regional_evaluation, "regional_evaluation.csv")
+export(regional_evaluation, "regional_evaluation.xlsx")
 
 
 #Check the country level median
