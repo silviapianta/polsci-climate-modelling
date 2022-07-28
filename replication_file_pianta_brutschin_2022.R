@@ -70,7 +70,7 @@ fossil_sector <- WDI(country = "all",
             'coal_share'= 'eg.elc.coal.zs',
             'gas_share'= 'EG.ELC.NGAS.ZS',
             'oil_share'='eg.elc.petr.zs'),
-          start = 1960,end = 2020,extra = TRUE) %>%
+          start = 2010,end = 2019,extra = TRUE) %>%
   as_tibble() %>%
   filter(region!="Aggregates") %>%
   arrange(iso3c, year) %>%
@@ -81,13 +81,13 @@ fossil_sector <- WDI(country = "all",
   fill(coal_share,.direction = "down") %>%
   fill(gas_share,.direction = "down") %>%
   fill(oil_share,.direction = "down")  %>%
-  filter(year==2020) %>%
+  filter(year==2019) %>%
   select(iso3c,country,coal_rent, gas_rent, oil_rent, co2_cap, population, coal_share, gas_share, oil_share) %>%
   left_join(regions, by=c("iso3c")) %>%
   #filter(population>10*10^6) %>%
   mutate(fossil_rent=coal_rent+oil_rent+gas_rent) %>%
   mutate(fossil_share=coal_share+gas_share+oil_share) %>%
-  filter(fossil_share>90) %>%
+  #filter(fossil_share>90) %>% # to make figure less crowded
   mutate(fossil_rent_norm=100*range01(fossil_rent)) %>%
   mutate(co2_cap_norm=100*range01(co2_cap)) %>%
   mutate(fossil_share_norm=100*range01(fossil_share)) 
@@ -344,7 +344,7 @@ technology<-wdi3 %>%
   group_by(iso3c) %>%
   arrange(iso3c, year) %>%
   fill(science_percent,.direction = "down") %>%
-  filter(iso3c!="MMR") %>%
+  filter(iso3c!="MMR") %>% # filter out countries with seemingly unreliable values
   filter(iso3c!= "SYC") %>%
   filter(iso3c!="BTN") %>%
   filter(iso3c!="PHL") %>%
@@ -411,7 +411,7 @@ ggsave("Figure5.png", units="in", width=12, height=5, dpi=300)
 #
 # 3   Clean IVS file to keep only relevant variables (env + postmat) for last wave
 #
-# 3.1  Run IVS_clean.do
+# 3.1  Run "IVS_clean.do"
 #      File saved as "IVS7_env.dta"
 
 ivs7 <-read_dta("IVS7_env.dta") %>%
@@ -566,5 +566,5 @@ agri_50<-quantile(agri_index_data$agri_index, probs = c(0.5), na.rm = T)
 fossil_50<-quantile(fossil_index_data$fossil_index, probs = c(0.5), na.rm = T)
 tech_50<-quantile(technology_index_data$tech_index, probs = c(0.5), na.rm = T)
 attitudes_index50<-quantile(ivs7$attitudes_index, probs = c(0.5), na.rm = T)
-instit_index50<-quantile(gov_eff$instit_index, probs = c(0.5), na.rm = T)
+instit_index50<-quantile(wgi$instit_index, probs = c(0.5), na.rm = T)
 econ_50<-quantile(economic_index_data$econ_index, probs = c(0.5), na.rm = T)
