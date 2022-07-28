@@ -17,7 +17,7 @@
 # rm(list=ls())
 
 
-# In case you dont have some of these packages, please install them
+# In case you do not have some of these packages, please install them
 
 pkgs <- c("vroom", "tidyverse", "here", "zoo", "haven", "countrycode", "ggrepel", "WDI", "hrbrthemes", "cowplot", "scatterplot3d")
 load<-lapply(pkgs, library, character.only=TRUE)
@@ -28,22 +28,26 @@ load<-lapply(pkgs, library, character.only=TRUE)
 setwd("/Users/silviapianta/Documents/GitHub/polsci-climate-modelling")
 
 
-# You will need to download most data directly, as we might not be allowed to distribute them
-
-# Function to standardize measurements (will be used later)
-
-range01 <- function(x){(x - min(x, na.rm = T))/(max(x, na.rm = T) - min(x, na.rm = T))}
-
 # Table matching countries to IAM regions
 
 regions <- vroom("region_conversion.csv") %>%
   rename(iso3c=iso)
 
-# Colours that are used in visualizations
+
+# Function to standardize measurements (will be used later)
+
+range01 <- function(x){(x - min(x, na.rm = T))/(max(x, na.rm = T) - min(x, na.rm = T))}
+
+
+# Colours used in visualizations
 
 colours=c("ASIA"="firebrick", "OECD"="forestgreen", "LAM" ="royalblue", "MAF"="grey", "REF" = "purple")
 
 colours3=c("high"="royalblue", "low"="orange")
+
+
+# Note: the code downloads most data directly from online sources, 
+# as we might not be allowed to distribute them
 
 
 #################################
@@ -53,10 +57,10 @@ colours3=c("high"="royalblue", "low"="orange")
 #Figure 2A
 
 # Download data on fossil share of electricity generation and fossil rent 
-# from the World Bank
+# Source: World Bank World Development Indicators (WDI)
 
 
-wdi2<-WDI(country = "all",
+wdi2 <- WDI(country = "all",
           indicator = c(
             'coal_rent'='NY.GDP.COAL.RT.ZS', 
             'co2_cap'='EN.ATM.CO2E.PC', 'population'='SP.POP.TOTL',
@@ -77,7 +81,7 @@ wdi2<-WDI(country = "all",
   fill(gas_share,.direction = "down") %>%
   fill(oil_share,.direction = "down") 
 
-fossil_sector<-wdi2 %>%
+fossil_sector <- wdi2 %>%
   filter(year==2020) %>%
   select(iso3c,country,coal_rent, gas_rent, oil_rent, co2_cap, population, coal_share, gas_share, oil_share) %>%
   left_join(regions, by=c("iso3c")) %>%
@@ -89,12 +93,12 @@ fossil_sector<-wdi2 %>%
   mutate(co2_cap_norm=100*range01(co2_cap)) %>%
   mutate(fossil_share_norm=100*range01(fossil_share)) 
 
-fossil_rent_norm_q<-quantile(fossil_sector$fossil_rent_norm, probs = c(0.7), na.rm = T)
-fossil_share_norm_q<-quantile(fossil_sector$fossil_share_norm, probs = c(0.7), na.rm = T)
+fossil_rent_norm_q <- quantile(fossil_sector$fossil_rent_norm, probs = c(0.7), na.rm = T)
+fossil_share_norm_q <- quantile(fossil_sector$fossil_share_norm, probs = c(0.7), na.rm = T)
 
 
 
-fossil_sector_fig<-fossil_sector %>%
+fossil_sector_fig <- fossil_sector %>%
   filter(!(is.na(regions))) %>%
   mutate(country_viz=ifelse(fossil_rent_norm>fossil_rent_norm_q|fossil_share_norm>fossil_share_norm_q, iso3c,NA)) %>%
   ggplot() +
@@ -111,9 +115,9 @@ fossil_sector_fig
 
 # Figure 2B
 
-#Getting the share of methane emissions in agriculture
-#source: https://zenodo.org/record/5497833 
-#please download yourself
+# Dowload data on the share of methane emissions in agriculture
+# Source: https://zenodo.org/record/5497833 
+
 
 methane <-vroom("emissions.csv") %>%
            filter(year==2019) %>%
@@ -124,9 +128,11 @@ methane <-vroom("emissions.csv") %>%
   summarise(methane_emissions=sum(value)) %>%
   rename(iso3c=ISO)
 
-#population and agriculture in GDP (source WDI, see SM)
 
-wdi1<-WDI(country = "all",
+# Dowload data on population and the share agriculture in GDP 
+# Source: World Bank World Development Indicators (WDI)
+
+wdi1 <- WDI(country = "all",
                  indicator = c(
                    'population'='SP.POP.TOTL',
                    'share_agriculture'='NV.AGR.TOTL.ZS'),
@@ -136,7 +142,7 @@ wdi1<-WDI(country = "all",
   arrange(iso3c, year) %>%
   fill(share_agriculture,.direction = "down")
 
-agri_sector<-wdi1 %>%
+agri_sector <- wdi1 %>%
              filter(year==2020) %>%
              left_join(methane, by=c("iso3c")) %>%
              left_join(regions, by=c("iso3c")) %>%
@@ -148,11 +154,11 @@ agri_sector<-wdi1 %>%
 
 
 #Calculations not to add labels only to higher percentile countries
-meth_cap_q<-quantile(agri_sector$methane_cap_norm, probs = c(0.7), na.rm = T)
-agri_gdp_norm_q<-quantile(agri_sector$agri_gdp_norm, probs = c(0.7), na.rm = T)
+meth_cap_q <- quantile(agri_sector$methane_cap_norm, probs = c(0.7), na.rm = T)
+agri_gdp_norm_q <- quantile(agri_sector$agri_gdp_norm, probs = c(0.7), na.rm = T)
 
 
-agri_sector_fig<-agri_sector %>%
+agri_sector_fig <- agri_sector %>%
                  filter(!(is.na(regions))) %>%
                  mutate(country_viz=ifelse(methane_cap_norm>meth_cap_q|agri_gdp_norm>agri_gdp_norm_q, iso3c,NA)) %>%
   ggplot() +
@@ -168,13 +174,14 @@ agri_sector_fig<-agri_sector %>%
 agri_sector_fig
 
 
-#Arrange Figure 2A and 2B
+# Arrange Figure 2A and 2B
 
-country_plot<-plot_grid(fossil_sector_fig,agri_sector_fig,labels=c("A", "B"), ncol = 1)
+country_plot <- plot_grid(fossil_sector_fig,agri_sector_fig,labels=c("A", "B"), ncol = 1)
 
 country_plot
 
 #Save Figure
+
 ggsave("Figure2.png", units="in", width=7, height=9, dpi=300)
 
 
