@@ -404,8 +404,8 @@ technology_fig<-technology %>%
 
 technology_fig
 
-ggsave("Figure5.png", units="in", width=12, height=5, dpi=300)
-ggsave("Figure5.jpeg", units="in", width=12, height=5, dpi=300)
+ggsave("Figure5.png", units="in", width=7, height=4, dpi=300)
+ggsave("Figure5.jpeg", units="in", width=7, height=4, dpi=300)
 
 
 #################################
