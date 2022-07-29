@@ -10,7 +10,7 @@
 
 
 # Please note that, as the code downloads some of the datasets from online sources, 
-# the reported numbers for regional aggregation might change
+# the figures and computations might slightly change as a result of the updated of these sources.
 
 
 # rm(list=ls())
@@ -162,10 +162,12 @@ agri_sector <- WDI(country = "all",
              filter(country!="Chad") %>%
              mutate(methane_capita=methane_emissions/population) %>%
              mutate(agri_gdp_norm=100*range01(share_agriculture)) %>%
-             mutate(methane_cap_norm=100*range01(methane_capita)) 
+             mutate(methane_cap_norm=100*range01(methane_capita)) %>%
+             filter(year==2019) 
+  
 
 
-#Calculations not to add labels only to higher percentile countries
+#Calculations to add labels only to higher percentile countries
 
 meth_cap_q <- quantile(agri_sector$methane_cap_norm, probs = c(0.7), na.rm = T)
 agri_gdp_norm_q <- quantile(agri_sector$agri_gdp_norm, probs = c(0.7), na.rm = T)
@@ -199,6 +201,7 @@ country_plot
 #Save Figure
 
 ggsave("Figure2.png", units="in", width=7, height=9, dpi=300)
+ggsave("Figure2.jpeg", units="in", width=7, height=9, dpi=300)
 
 
 
@@ -238,15 +241,15 @@ wgi<-import("wgi.csv") %>%
   mutate(instit_index=(ge_norm+rl_norm)/2) 
 
 
-ge_norm50 <- quantile(wgi$ge_norm, probs = c(0.7), na.rm = T)
-rl_norm50 <- quantile(wgi$rl_norm, probs = c(0.7), na.rm = T)
+ge_norm70 <- quantile(wgi$ge_norm, probs = c(0.7), na.rm = T)
+rl_norm70 <- quantile(wgi$rl_norm, probs = c(0.7), na.rm = T)
 instit_index50 <- quantile(wgi$instit_index, probs = c(0.5), na.rm = T)
 
 
 # Figure
 
 institutional_fig<-wgi %>%
-  mutate(country_viz=ifelse(ge_norm>ge_norm50|rl_norm>rl_norm50, iso3c,NA)) %>%
+  mutate(country_viz=ifelse(ge_norm>ge_norm70|rl_norm>rl_norm70, iso3c,NA)) %>%
   ggplot() +
   geom_point(aes(y=ge_norm, x=rl_norm, color=regions), size=4, alpha=0.6)+
   geom_text_repel(aes(y=ge_norm, x=rl_norm, label=country_viz))+
@@ -259,6 +262,7 @@ institutional_fig<-wgi %>%
 institutional_fig
 
 ggsave("Figure3.png", units="in", width=7, height=4, dpi=300)
+ggsave("Figure3.jpeg", units="in", width=7, height=4, dpi=300)
 
 
 
@@ -306,6 +310,7 @@ economic_fig<-econ %>%
 economic_fig
 
 ggsave("Figure4.png", units="in", width=7, height=4, dpi=300)
+ggsave("Figure4.jpeg", units="in", width=7, height=4, dpi=300)
 
 
 
@@ -321,8 +326,8 @@ ggsave("Figure4.png", units="in", width=7, height=4, dpi=300)
 
 science <- import("gii.csv") %>%
   filter(Indicator=="Graduates in science and engineering", `Subindicator Type`=="Percent") %>%
-  rename(iso3c = "Country ISO3") %>%
-  select(-c(`Indicator Id`, `Indicator`, `Subindicator Type`, "Country Name")) %>%
+ # rename(iso3c = "country") %>%
+  select(-c(`Indicator Id`, `Indicator`, `Subindicator Type`, "country")) %>%
   pivot_longer(!c(iso3c), names_to = "year", values_to = "science_percent") %>%
   filter(year!=2020) %>%
   mutate(year=as.numeric(year)) 
@@ -380,6 +385,7 @@ technology_fig<-technology %>%
 technology_fig
 
 ggsave("Figure5.png", units="in", width=12, height=5, dpi=300)
+ggsave("Figure5.jpeg", units="in", width=12, height=5, dpi=300)
 
 
 #################################
@@ -424,7 +430,8 @@ ivs7 <-read_dta("IVS7_env.dta") %>%
   filter(!(is.na(regions))) %>%
   mutate(postmat_norm=range01(postmat)*100) %>%
   mutate(envgrowth_norm=range01(envgrowth)*100) %>%
-  mutate(attitudes_index=(postmat_norm+envgrowth_norm)/2) 
+  mutate(attitudes_index=(postmat_norm+envgrowth_norm)/2) %>%
+  filter(year==2019)
 
 
 postmat70<-quantile(ivs7$postmat, probs = c(0.7), na.rm = T)
@@ -447,6 +454,8 @@ attitudes_fig <- ivs7 %>%
 attitudes_fig
 
 ggsave("Figure6.png", units="in", width=7, height=4, dpi=300)
+ggsave("Figure6.jpeg", units="in", width=7, height=4, dpi=300)
+
 
 ###################
 
@@ -457,7 +466,8 @@ agri_index_data <- agri_sector %>%
   mutate(agri_index=(agri_gdp_norm+methane_cap_norm)/2) 
 
 fossil_index_data<-fossil_sector %>%
-  mutate(fossil_index=(fossil_share_norm+co2_cap_norm)/2)
+  mutate(fossil_index=(fossil_share_norm+co2_cap_norm)/2) %>%
+  filter(fossil_index!=is.na(fossil_index))
 
 technology_index_data<- technology%>%
   ungroup() %>%
@@ -506,7 +516,8 @@ overall_evaluation<-agri %>%
   left_join(regions) %>%
   rename(region=regions) %>%
   mutate(capabilities_index=(econ_index+tech_index+instit_index)/3) %>%
-  mutate(emissions_index=(fossil_index+agri_index+instit_index)/2)
+  mutate(emissions_index=(fossil_index+agri_index)/2) %>%
+  filter(!is.na(population))
 
 
 
