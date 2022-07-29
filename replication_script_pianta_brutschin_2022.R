@@ -47,7 +47,7 @@ colours3=c("high"="royalblue", "low"="orange")
 
 # Note: as the conditions of use of some of the datasets do not allow us to distribute them,
 # some datasets will need to be downloaded directly from online sources.
-# We provide below the links that allow to download them.
+# We provide below links and detailed instructions to download them.
 
 
 #################################
