@@ -68,10 +68,11 @@ population_data <- WDI(country = "all",
 
 #Figure 2 - Emissions lock-in
 
+
 #Figure 2A - Carbon lock-in
 
-# Data on fossil share of electricity generation and fossil rent from last pre-pandemic year (2019)
-# Directly downloaded by code below from the World Bank World Development Indicators (WDI)
+# Data on fossil share of electricity generation and fossil rent from 2019
+# Directly downloads with code below from the World Bank World Development Indicators (WDI)
 
 
 fossil_sector <- WDI(country = "all",
@@ -98,6 +99,7 @@ fossil_sector <- WDI(country = "all",
   select(iso3c,country,coal_rent, gas_rent, oil_rent, co2_cap, population, coal_share, gas_share, oil_share) %>%
   left_join(regions, by=c("iso3c")) %>%
   #filter(population>10*10^6) %>%
+  filter(iso3c!="TLS") %>% # non-validated data for TLS
   mutate(fossil_rent=coal_rent+oil_rent+gas_rent) %>%
   mutate(fossil_share=coal_share+gas_share+oil_share) %>%
   #filter(fossil_share>90) %>% # to make figure less crowded
@@ -106,6 +108,7 @@ fossil_sector <- WDI(country = "all",
   mutate(fossil_share_norm=100*range01(fossil_share)) 
 
 
+#Calculations to add labels in figures only to higher percentile countries
 
 fossil_rent_norm_q <- quantile(fossil_sector$fossil_rent_norm, probs = c(0.7), na.rm = T)
 fossil_share_norm_q <- quantile(fossil_sector$fossil_share_norm, probs = c(0.7), na.rm = T)
@@ -145,7 +148,7 @@ methane <-import("essd_ghg_data.xlsx", which = "data") %>%
 
 
 # Download data on population and the share agriculture in GDP 
-# Directly downloaded by code below from the World Bank World Development Indicators (WDI)
+# Directly downloads with code below from the World Bank World Development Indicators (WDI)
 
 agri_sector <- WDI(country = "all",
                  indicator = c(
@@ -158,8 +161,8 @@ agri_sector <- WDI(country = "all",
   fill(share_agriculture,.direction = "down")  %>%
              left_join(methane, by=c("iso3c")) %>%
              left_join(regions, by=c("iso3c")) %>%
-             filter(country!="Somalia") %>%
-             filter(country!="Chad") %>%
+             filter(country!="Somalia") %>% # non-validated data 
+             filter(country!="Chad") %>% # non-validated data 
              mutate(methane_capita=methane_emissions/population) %>%
              mutate(agri_gdp_norm=100*range01(share_agriculture)) %>%
              mutate(methane_cap_norm=100*range01(methane_capita)) %>%
@@ -167,7 +170,7 @@ agri_sector <- WDI(country = "all",
   
 
 
-#Calculations to add labels only to higher percentile countries
+#Calculations to add labels in figures only to higher percentile countries
 
 meth_cap_q <- quantile(agri_sector$methane_cap_norm, probs = c(0.7), na.rm = T)
 agri_gdp_norm_q <- quantile(agri_sector$agri_gdp_norm, probs = c(0.7), na.rm = T)
@@ -235,11 +238,22 @@ wgi<-import("wgi.csv") %>%
   left_join(population_data, by=c("iso3c", "year")) %>%
   left_join(regions, by=c("iso3c")) %>%
   filter(!(is.na(regions))) %>%
+  filter(iso3c!="GUM") %>% # remove small countries outliers
+  filter(iso3c!="ASM") %>%
+  filter(iso3c!="BRN") %>%
+  filter(iso3c!="WSM") %>%
+  filter(iso3c!="PRI") %>%
+  filter(iso3c!="KIR") %>%
+  filter(iso3c!="LCA") %>%
+  filter(iso3c!="SYC") %>%
+  filter(iso3c!="TUV") %>%
   group_by(year) %>%
   mutate(ge_norm=range01(gee)*100) %>%
   mutate(rl_norm=range01(rle)*100) %>%
   mutate(instit_index=(ge_norm+rl_norm)/2) 
 
+
+#Calculations to add labels in figures only to higher percentile countries
 
 ge_norm70 <- quantile(wgi$ge_norm, probs = c(0.7), na.rm = T)
 rl_norm70 <- quantile(wgi$rl_norm, probs = c(0.7), na.rm = T)
@@ -271,6 +285,9 @@ ggsave("Figure3.jpeg", units="in", width=7, height=4, dpi=300)
 # Figure 4 - Economic Capacity
 
 
+# Download data on GDP per capita and Ease of Doing Business from the World Bank
+# Directly downloads with code below from the World Bank World Development Indicators (WDI)
+
 econ<-WDI(country = "all",
            indicator = c(
              'gdp_capita'="NY.GDP.PCAP.PP.KD", 
@@ -281,7 +298,7 @@ econ<-WDI(country = "all",
   arrange(iso3c, year) %>%
   left_join(population_data, by=c("iso3c", "year")) %>%
   # filter(population>10*10^6) %>%
-  filter(iso3c!="MAC") %>% # filter out small countries that are relatively outliers
+  filter(iso3c!="MAC") %>% # filter out small countries outliers
   filter(iso3c!="TCA") %>%
   mutate(gdp_log=log(gdp_capita+1)) %>%
   fill(ease_business,.direction = "down") %>%
@@ -289,12 +306,15 @@ econ<-WDI(country = "all",
   mutate(gdp_score=range01(gdp_capita)*100) 
 
 
+
+#Calculations to add labels in figures only to higher percentile countries
+
 gdp_capita70 <- quantile(econ$gdp_capita, probs = c(0.7), na.rm = T)
 ease_business70 <- quantile(econ$ease_business, probs = c(0.7), na.rm = T)
 
 
 
-economic_fig<-econ %>%
+economic_fig <- econ %>%
   left_join(regions, by=c("iso3c")) %>%
   filter(!is.na(regions)) %>%
   mutate(country_viz=ifelse(gdp_capita>gdp_capita70|ease_business>ease_business70, iso3c,NA)) %>%
@@ -362,6 +382,9 @@ technology<-WDI(country = "all",
 
 #we used this article to justify 40% for China
 #https://www.forbes.com/sites/niallmccarthy/2017/02/02/the-countries-with-the-most-stem-graduates-infographic/?sh=6b642631268a
+
+
+#Calculations to add labels in figures only to higher percentile countries
 
 rd_gdp70<-quantile(technology$rd_gdp, probs = c(0.7), na.rm = T)
 science_percent70<-quantile(technology$science_percent, probs = c(0.7), na.rm = T)
@@ -432,6 +455,9 @@ ivs7 <-read_dta("IVS7_env.dta") %>%
   mutate(envgrowth_norm=range01(envgrowth)*100) %>%
   mutate(attitudes_index=(postmat_norm+envgrowth_norm)/2) %>%
   filter(year==2019)
+
+
+#Calculations to add labels in figures only to higher percentile countries
 
 
 postmat70<-quantile(ivs7$postmat, probs = c(0.7), na.rm = T)
