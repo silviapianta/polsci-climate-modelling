@@ -346,15 +346,15 @@ ggsave("Figure4.jpeg", units="in", width=7, height=4, dpi=300)
 
 science <- import("gii.csv") %>%
   filter(Indicator=="Graduates in science and engineering", `Subindicator Type`=="Percent") %>%
- # rename(iso3c = "country") %>%
-  select(-c(`Indicator Id`, `Indicator`, `Subindicator Type`, "country")) %>%
+  rename(iso3c = "Country ISO3") %>%
+  select(-c(`Indicator Id`, `Indicator`, `Subindicator Type`, "Country Name")) %>%
   pivot_longer(!c(iso3c), names_to = "year", values_to = "science_percent") %>%
   filter(year!=2020) %>%
   mutate(year=as.numeric(year)) 
 
 
 # Data on R&D investment as a percentage of GDP
-# Directly downloaded by code below from the World Bank World Development Indicators (WDI)
+# Directly downloads with code below from the World Bank World Development Indicators (WDI)
 
 
 technology<-WDI(country = "all",
@@ -370,7 +370,7 @@ technology<-WDI(country = "all",
   group_by(iso3c) %>%
   arrange(iso3c, year) %>%
   fill(science_percent,.direction = "down") %>%
-  filter(iso3c!="MMR") %>% # filter out small countries with seemingly unreliable values
+  filter(iso3c!="MMR") %>% # filter out small countries with outlier values
   filter(iso3c!= "SYC") %>%
   filter(iso3c!="BTN") %>%
   filter(iso3c!="PHL") %>%
@@ -378,10 +378,8 @@ technology<-WDI(country = "all",
   filter(iso3c!= "DJI") %>%
   filter(year==2019) %>%
   mutate(science_percent=ifelse(iso3c=="CHN", 40, science_percent))
-
-
-#we used this article to justify 40% for China
-#https://www.forbes.com/sites/niallmccarthy/2017/02/02/the-countries-with-the-most-stem-graduates-infographic/?sh=6b642631268a
+  #we used this article to justify 40% for China
+  #https://www.forbes.com/sites/niallmccarthy/2017/02/02/the-countries-with-the-most-stem-graduates-infographic/?sh=6b642631268a
 
 
 #Calculations to add labels in figures only to higher percentile countries
@@ -394,7 +392,6 @@ science_percent70<-quantile(technology$science_percent, probs = c(0.7), na.rm = 
 
 technology_fig<-technology %>%
   filter(!(is.na(regions)))  %>%
-  #filter(iso3c!="DJI")%>%
   mutate(region=factor(region, levels=c("REF","MAF", "LAM","ASIA", "OECD")))%>%
   mutate(country_viz=ifelse(rd_gdp>rd_gdp70|science_percent>science_percent70, iso3c,NA)) %>%
   ggplot() +
@@ -419,13 +416,12 @@ ggsave("Figure5.jpeg", units="in", width=12, height=5, dpi=300)
 # Following the procedure below
 # This is to comply with the WVS & WVS conditions of use
 
-# 
 
 
 # 1.  Download & clean EVS Trend File
 # 
 # 1.1	Download EVS Trend File 1981-2017  https://search.gesis.org/research_data/ZA7503
-#     Saved as "EVS_Trend_File_1981-2017_ZA7503_v2-0-0.dta"
+#     Save as "EVS_Trend_File_1981-2017_ZA7503_v2-0-0.dta"
 #
 # 1.2	Use "EVS_Trend_File_1981-2017_ZA7503_missing.do" to clean missing values by replacing negative values with .a , .b, .c, .d. 
 #     This .do file saves the new dataset as "EVS_Trend_File_1981-2017_ZA7503_v2-0-0_miss.dta"
@@ -434,7 +430,7 @@ ggsave("Figure5.jpeg", units="in", width=12, height=5, dpi=300)
 # 2.  Download WVS Trend File, clean and  merge with EVS Trend File to create IVS file
 # 
 # 2.1	Download WVS Time-Series (1981-2020) Cross-National Data-Set (2.0.0) https://www.worldvaluessurvey.org/WVSEVStrend.jsp
-#     Saved as "WVS_Trend_v2_0.dta"
+#     This .do file saves the new dataset as "WVS_Trend_v2_0.dta"
 #
 # 2.2	Use "ZA7503_EVS_WVS_Merge_Syntax.do" to clean WVS trend and merge with EVS trend
 #     This .do file saves the IVS dataset as "Integrated_values_surveys_1981-2021.dta"
@@ -443,7 +439,8 @@ ggsave("Figure5.jpeg", units="in", width=12, height=5, dpi=300)
 # 3   Clean IVS file to keep only relevant variables (env + postmat) for last wave
 #
 # 3.1  Run "IVS_clean.do"
-#      File saved as "IVS7_env.dta"
+#      This .do file saves a dataset with the relevant variables from the last IVS wave as "IVS7_env.dta"
+
 
 ivs7 <-read_dta("IVS7_env.dta") %>%
   mutate(iso3c = countrycode(iso2c, 'iso2c', 'iso3c')) %>%
