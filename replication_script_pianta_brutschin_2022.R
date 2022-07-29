@@ -10,7 +10,7 @@
 
 
 # Please note that, as the code downloads some of the datasets from online sources, 
-# the figures and computations might slightly change as a result of the updated of these sources.
+# the figures and computations might slightly change as a result of the update of these sources.
 
 
 # rm(list=ls())
